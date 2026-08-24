@@ -13,10 +13,32 @@ probe release:environment
 
 probe release:sources
     lines {
-        git ls-files -z --cached --others --exclude-standard -- src build.sh global.json LICENSE | tar --null -T - -cf - | git hash-object --stdin
+        tmp=$(mktemp -d)
+        trap 'rm -rf "$tmp"' EXIT
+        fast=true
+        git diff --no-ext-diff --quiet HEAD -- src build.sh global.json LICENSE || fast=false
+        [ "$(git ls-files --others --exclude-standard -- src build.sh global.json LICENSE | wc -c)" -eq 0 ] || fast=false
+        [ "$(git config --type=bool --get core.filemode || echo true)" = true ] || fast=false
+        [ "$(git config --type=bool --get core.symlinks || echo true)" = true ] || fast=false
+        [ "$(git config --type=bool --get core.sparseCheckout || echo false)" = false ] || fast=false
+        git ls-files -z -- src build.sh global.json LICENSE >"$tmp/files" || fast=false
+        git ls-files -v -z -- src build.sh global.json LICENSE >"$tmp/flags" || fast=false
+        perl -0ne 'exit 1 unless /^H /' "$tmp/flags" || fast=false
+        git check-attr --stdin -z filter working-tree-encoding <"$tmp/files" >"$tmp/attrs" || fast=false
+        perl -0ne '$n++; exit 1 if $n % 3 == 0 && $_ ne "unspecified\0" && $_ ne "unset\0"' "$tmp/attrs" || fast=false
+        git ls-files --eol -z -- src build.sh global.json LICENSE >"$tmp/eol" || fast=false
+        perl -0ne 'exit 1 unless /^i\/([^ ]+) +w\/([^ ]+) / && $1 eq $2' "$tmp/eol" || fast=false
+        if [ "$fast" = true ]; then
+            printf 'clean-v1\n'
+            git rev-parse HEAD:src HEAD:build.sh HEAD:global.json HEAD:LICENSE
+            printf 'git=%s\nautocrlf=%s\neol=%s\n' "$(git --version)" "$(git config --type=bool --get core.autocrlf || echo false)" "$(git config --get core.eol || echo native)"
+            git hash-object "$tmp/attrs" "$tmp/eol"
+        else
+            git ls-files -z --cached --others --exclude-standard -- src build.sh global.json LICENSE | perl -0ne 'chop; print "$_\0" if -e $_ || -l $_' | tar --null -T - -cf - | git hash-object --stdin
+        fi
     }
 
-cook_dotnet.workspace({ solution = "src/Radarr.sln", configuration = "Debug" })
+cook_dotnet.workspace({ solution = "src/Radarr.sln", root = "src", configuration = "Debug" })
 cook_pnpm.workspace({
     packages = "auto",
     node = ">=20",
