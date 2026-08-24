@@ -4,12 +4,12 @@
   "description": "Radarr is a PVR for Usenet and BitTorrent users",
   "scripts": {
     "build": "webpack --config ./frontend/build/webpack.config.js",
-    "prebuild": "yarn clean",
+    "prebuild": "pnpm clean",
     "clean": "rimraf ./_output/UI && rimraf --glob \"**/*.js.map\"",
     "start": "webpack --watch --config ./frontend/build/webpack.config.js",
     "watch": "webpack --watch --config ./frontend/build/webpack.config.js",
     "lint": "eslint --config frontend/.eslintrc.js --ignore-path frontend/.eslintignore frontend/",
-    "lint-fix": "yarn lint --fix",
+    "lint-fix": "pnpm lint --fix",
     "stylelint-linux": "stylelint $(find frontend -name '*.css') --config frontend/.stylelintrc",
     "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc"
   },
@@ -155,6 +155,6 @@
   },
   "volta": {
     "node": "20.11.1",
-    "yarn": "1.22.19"
+    "pnpm": "10.33.0"
   }
 }
