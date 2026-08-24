@@ -15,5 +15,20 @@ cook_pnpm.workspace({
     },
 })
 
-recipe build: "dotnet:build" "pnpm:build"
-    cook "build/radarr/" { set -e; rm -rf build/radarr && mkdir -p build/radarr/bin build/radarr/UI; for dir in $<in>; do case "$dir" in build/dotnet/bin/*) cp -a "$dir"/. build/radarr/bin/;; esac; done; cp -a _output/UI/. build/radarr/UI/ }
+recipe build
+    cook "build/radarr/" >{
+        local function copy_tree(source, destination)
+            fs.mkdir_p(destination)
+            cook.sh("cp -a " .. source .. "/. " .. destination .. "/")
+        end
+
+        cook.sh("rm -rf " .. output)
+        for _, directory in ipairs(cook.dep_output_list("dotnet:build")) do
+            if directory:match("^build/dotnet/bin/") then
+                copy_tree(directory, path.join(output, "bin"))
+            end
+        end
+        for _, directory in ipairs(cook.dep_output_list("pnpm:build")) do
+            copy_tree(directory, path.join(output, "UI"))
+        end
+    }
