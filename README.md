@@ -24,7 +24,7 @@ cook build                 # warm run: all unchanged work is cached
 cook why build             # read-only explanation of hits and rebuilds
 ```
 
-The graph builds the .NET runtime closure, projects it through the `dotnet-console` and `dotnet-mono` recipes, builds the UI with `pnpm:build`, then assembles those outputs into `build/radarr`. Run it with isolated application data:
+The graph builds every .NET project through `dotnet:build`, builds the UI with `pnpm:build`, then assembles those aggregate outputs into `build/radarr`. Run it with isolated application data:
 
 ```sh
 radarr_data=$(mktemp -d)
@@ -32,7 +32,7 @@ build/radarr/bin/Radarr -nobrowser -data="$radarr_data"
 # Stop Radarr, then remove "$radarr_data" when finished.
 ```
 
-Cache keys follow declared inputs. A frontend edit invalidates `pnpm:build` and the final runnable tree, not the .NET closure; a core C# edit invalidates its affected .NET work, the projections that consume it, and the final tree, not `pnpm:build`. To inspect either case without retaining the test edit:
+Cache keys follow declared inputs. A frontend edit invalidates `pnpm:build` and the final runnable tree, not the .NET closure; a core C# edit invalidates its affected .NET work and the final tree, not `pnpm:build`. To inspect either case without retaining the test edit:
 
 ```sh
 (
@@ -45,7 +45,7 @@ Cache keys follow declared inputs. A frontend edit invalidates `pnpm:build` and 
 )
 ```
 
-The committed [`cook.lock`](cook.lock) is intentional: the tested build's current module resolver cannot parse the published one-line rockspec, so it supplies the exact tested module closure. `dotnet:build` has no terminal outputs when it contains zero units, so the [`Cookfile`](Cookfile) consumes output-producing runtime leaves instead. The modules are used as published, with no inline extension.
+The committed [`cook.lock`](cook.lock) supplies the exact tested module closure. `cook_dotnet` 0.3 exposes the generated projects' existing build outputs through `dotnet:build`, so the [`Cookfile`](Cookfile) consumes the workspace aggregate directly. The modules are used as published, with no inline extension.
 
 Fork-local Radarr adaptations are limited to plain pnpm type dependencies, `ArtifactsPath` precedence, rooted StyleCop paths, and Windows targeting support.
 

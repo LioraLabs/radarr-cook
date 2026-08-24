@@ -1,7 +1,7 @@
 use cook_dotnet
 use cook_pnpm
 
-cook_dotnet.workspace({ solution = "src/NzbDrone.Console/Radarr.Console.csproj", configuration = "Debug" })
+cook_dotnet.workspace({ solution = "src/Radarr.sln", configuration = "Debug" })
 cook_pnpm.workspace({
     packages = "auto",
     node = ">=20",
@@ -15,30 +15,8 @@ cook_pnpm.workspace({
     },
 })
 
-recipe dotnet-mono: "dotnet:build"
-    cook.dep_output_list("dotnet:Radarr-Common")
-    cook_dotnet.build({ project = "src/NzbDrone.Mono/Radarr.Mono.csproj", artifacts = "build/dotnet-mono", configuration = "Debug", framework = "net8.0" })
-
-recipe dotnet-console: "dotnet:build"
-    cook.dep_output_list("dotnet:Radarr-Console")
-    cook.dep_output_list("dotnet:Radarr-Host")
-    cook.dep_output_list("dotnet:Radarr-Common")
-    cook.dep_output_list("dotnet:Radarr-Core")
-    cook.dep_output_list("dotnet:Radarr-SignalR")
-    cook.dep_output_list("dotnet:Radarr-Api-V3")
-    cook.dep_output_list("dotnet:Radarr-Http")
-    cook_dotnet.build({ project = "src/NzbDrone.Console/Radarr.Console.csproj", artifacts = "build/dotnet-console", configuration = "Debug", framework = "net8.0" })
-
-recipe build: "dotnet:build" dotnet-console dotnet-mono "dotnet:Radarr-Console" "dotnet:Radarr-Host" "dotnet:Radarr-Common" "dotnet:Radarr-Core" "dotnet:Radarr-SignalR" "dotnet:Radarr-Api-V3" "dotnet:Radarr-Http" "pnpm:build"
-    cook.dep_output_list("dotnet-console")
-    cook.dep_output_list("dotnet-mono")
-    cook.dep_output_list("dotnet:Radarr-Console")
-    cook.dep_output_list("dotnet:Radarr-Host")
-    cook.dep_output_list("dotnet:Radarr-Common")
-    cook.dep_output_list("dotnet:Radarr-Core")
-    cook.dep_output_list("dotnet:Radarr-SignalR")
-    cook.dep_output_list("dotnet:Radarr-Api-V3")
-    cook.dep_output_list("dotnet:Radarr-Http")
+recipe build: "dotnet:build" "pnpm:build"
+    cook.dep_output_list("dotnet:build")
     cook.dep_output_list("pnpm:build")
     cook "build/radarr/" >{
         local function copy_tree(source, destination)
@@ -47,15 +25,9 @@ recipe build: "dotnet:build" dotnet-console dotnet-mono "dotnet:Radarr-Console" 
         end
 
         cook.sh("rm -rf " .. output)
-        for _, dependency in ipairs({ "dotnet:Radarr-Console", "dotnet:Radarr-Host", "dotnet:Radarr-Common", "dotnet:Radarr-Core", "dotnet:Radarr-SignalR", "dotnet:Radarr-Api-V3", "dotnet:Radarr-Http", "dotnet-mono", "dotnet-console" }) do
-            for _, directory in ipairs(cook.dep_output_list(dependency)) do
-                if dependency == "dotnet-console" then
-                    copy_tree("build/dotnet-console/bin/Radarr.Console/debug_net8.0_linux-x64", path.join(output, "bin"))
-                elseif dependency == "dotnet-mono" then
-                    copy_tree("build/dotnet-mono/bin/Radarr.Mono/debug_net8.0_linux-x64", path.join(output, "bin"))
-                elseif directory:match("/bin/") then
-                    copy_tree(directory, path.join(output, "bin"))
-                end
+        for _, directory in ipairs(cook.dep_output_list("dotnet:build")) do
+            if directory:match("^build/dotnet/bin/") then
+                copy_tree(directory, path.join(output, "bin"))
             end
         end
         for _, directory in ipairs(cook.dep_output_list("pnpm:build")) do
