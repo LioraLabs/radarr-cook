@@ -34,3 +34,22 @@ recipe build: "dotnet:build" "pnpm:build"
             copy_tree(directory, path.join(output, "UI"))
         end
     }
+
+recipe release-linux-x64: "pnpm:build"
+    seal "src/**" "build.sh" "global.json" "LICENSE"
+    cook.dep_output_list("pnpm:build")
+    cook "build/release/linux-x64/net8.0/Radarr/" {
+        export DOTNET_CLI_HOME="$PWD/.cook/dotnet/home" NUGET_PACKAGES="$PWD/.cook/dotnet/packages" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_NOLOGO=1
+        lock_backup=$(mktemp -d build/release-linux-x64-locks.XXXXXX)
+        find src -name packages.lock.json -print0 | tar --null -T - -cf "$lock_backup/locks.tar"
+        restore_locks() { tar -xf "$lock_backup/locks.tar"; rm -rf "$lock_backup"; }
+        trap restore_locks EXIT
+        rm -rf build/release-linux-x64-ui _tests _artifacts/linux-x64
+        cp -a _output/UI build/release-linux-x64-ui
+        ./build.sh --backend -f net8.0 -r linux-x64
+        mv build/release-linux-x64-ui _output/UI
+        ./build.sh --packages -f net8.0 -r linux-x64
+        cp -a _artifacts/linux-x64/net8.0/Radarr/. $<out>/
+        restore_locks
+        trap - EXIT
+    }
