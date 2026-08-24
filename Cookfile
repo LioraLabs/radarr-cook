@@ -16,5 +16,4 @@ cook_pnpm.workspace({
 })
 
 recipe build: "dotnet:build" "pnpm:build"
-    seal dotnet:toolchain "build/dotnet/bin/Radarr.Console/**" "build/dotnet/bin/Radarr.Mono/**" "_output/UI/**"
     cook "build/radarr/" { set -e; rm -rf build/radarr && export DOTNET_CLI_HOME="$(pwd)/.cook/dotnet/home" NUGET_PACKAGES="$(pwd)/.cook/dotnet/packages"; "$<dotnet:tool.dotnet.path>" publish src/NzbDrone.Console/Radarr.Console.csproj --artifacts-path build/dotnet --configuration Debug --framework net8.0 --runtime linux-x64 --no-build --no-restore -p:UseCommonOutputDirectory=true --output build/radarr/bin && "$<dotnet:tool.dotnet.path>" publish src/NzbDrone.Mono/Radarr.Mono.csproj --artifacts-path build/dotnet --configuration Debug --framework net8.0 --runtime linux-x64 --no-build --no-restore -p:UseCommonOutputDirectory=true --output build/radarr/bin && mkdir build/radarr/UI && cp -a _output/UI/. build/radarr/UI/ }
