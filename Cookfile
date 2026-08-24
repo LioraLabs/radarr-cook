@@ -11,6 +11,11 @@ probe release:environment
         dotnet --info
     }
 
+probe release:sources
+    lines {
+        git ls-files -z --cached --others --exclude-standard -- src build.sh global.json LICENSE | tar --null -T - -cf - | git hash-object --stdin
+    }
+
 cook_dotnet.workspace({ solution = "src/Radarr.sln", configuration = "Debug" })
 cook_pnpm.workspace({
     packages = "auto",
@@ -50,8 +55,7 @@ recipe verify: "pnpm:build"
     test { pnpm lint && pnpm stylelint-linux }
 
 recipe release-linux-x64-backend
-    seal "src/**" "build.sh" "global.json" "LICENSE"
-    seal release:toolchain release:environment
+    seal release:sources release:toolchain release:environment
     cook "build/release-backend/linux-x64/net8.0/" {
         root=$PWD
         rm -rf $<out>
