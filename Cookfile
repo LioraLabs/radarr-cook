@@ -62,4 +62,4 @@ recipe release-linux-x64: "pnpm:build"
         cp -a _artifacts/linux-x64/net8.0/Radarr/. "$root/$<out>/"
         cd "$root"
         rm -rf $<out>/.work
-    }
+    } nondet
