@@ -11,6 +11,44 @@
 Radarr is a movie collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new movies and will interface with clients and indexers to grab, sort, and rename them. It can also be configured to automatically upgrade the quality of existing files in the library when a better quality format becomes available.
 Note that only one type of a given movie is supported. If you want both a 4k version and 1080p version of a given movie you will need multiple instances.
 
+## Cook build showcase
+
+This fork can build a runnable Radarr tree with [Cook](https://github.com/LioraLabs/cook). Use a Cook build containing `cook.materialize` and the COOK-558 qualified-recipe resolution fix; the tested main build is `b055a6e9`, which reports Cook 0.16.1 / Standard v0.18. Also use Node 20 or newer, the .NET SDK 8.0.421 pinned by [`global.json`](global.json), and pnpm 10.33.0 (installed by the pnpm module).
+
+From a clean checkout:
+
+```sh
+cook modules install
+cook build
+cook build                 # warm run: all unchanged work is cached
+cook why build             # read-only explanation of hits and rebuilds
+```
+
+The graph builds the .NET runtime closure, projects it through the `dotnet-console` and `dotnet-mono` recipes, builds the UI with `pnpm:build`, then assembles those outputs into `build/radarr`. Run it with isolated application data:
+
+```sh
+radarr_data=$(mktemp -d)
+build/radarr/bin/Radarr -nobrowser -data="$radarr_data"
+# Stop Radarr, then remove "$radarr_data" when finished.
+```
+
+Cache keys follow declared inputs. A frontend edit invalidates `pnpm:build` and the final runnable tree, not the .NET closure; a core C# edit invalidates its affected .NET work, the projections that consume it, and the final tree, not `pnpm:build`. To inspect either case without retaining the test edit:
+
+```sh
+(
+  file=frontend/src/Diag/ConsoleApi.js # or src/NzbDrone.Core/Languages/Language.cs
+  backup=$(mktemp)
+  cp "$file" "$backup"
+  trap 'cp "$backup" "$file"; rm -f "$backup"' EXIT
+  printf '\n' >> "$file"
+  cook why build
+)
+```
+
+The committed [`cook.lock`](cook.lock) is intentional: the tested build's current module resolver cannot parse the published one-line rockspec, so it supplies the exact tested module closure. `dotnet:build` has no terminal outputs when it contains zero units, so the [`Cookfile`](Cookfile) consumes output-producing runtime leaves instead. The modules are used as published, with no inline extension.
+
+Fork-local Radarr adaptations are limited to plain pnpm type dependencies, `ArtifactsPath` precedence, rooted StyleCop paths, and Windows targeting support.
+
 ## Major Features Include
 
 * Adding new movies with lots of information, such as trailers, ratings, etc.
