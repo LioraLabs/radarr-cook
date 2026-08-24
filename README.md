@@ -24,7 +24,7 @@ This is not a parallel reimplementation of Radarr's release process. Cook calls 
 
 ### Build from a clean clone
 
-Prerequisites are Git, `curl`, `tar`, Perl, Node 20 or newer, and the .NET SDK 8.0.421 pinned by [`global.json`](global.json). On Linux or macOS, install Cook and the published modules, then build:
+Prerequisites are Git, `curl`, `tar`, Perl, Node 20 or newer, and the .NET SDK 8.0.421 pinned by [`global.json`](global.json). The showcase has been verified on Linux; install Cook and the published modules, then build:
 
 ```sh
 curl -fsSL https://getcook.sh | sh

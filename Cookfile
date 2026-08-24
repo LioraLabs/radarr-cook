@@ -13,7 +13,7 @@ probe release:environment
 
 probe release:sources
     lines {
-        git ls-files -z --cached --others --exclude-standard -- src build.sh global.json LICENSE | perl -0ne 'chop; print "$_\0" if -e $_ || -l $_' | tar --null -T - -cf - | git hash-object --stdin
+        git ls-files -z --cached --others --exclude-standard -- src build.sh global.json test.sh Logo/64.png Logo/1024.png distribution/osx/Radarr.app/Contents/Info.plist | perl -0ne 'chop; print "$_\0" if -e $_ || -l $_' | tar --null -T - -cf - | git hash-object --stdin
     }
 
 cook_dotnet.workspace({ solution = "src/Radarr.sln", root = "src", configuration = "Debug" })
@@ -60,7 +60,7 @@ recipe release-linux-x64-backend
         root=$PWD
         rm -rf $<out>
         mkdir -p $<out>/.work
-        git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -xf - -C $<out>/.work
+        git ls-files -z --cached --others --exclude-standard -- src build.sh global.json test.sh Logo/64.png Logo/1024.png distribution/osx/Radarr.app/Contents/Info.plist | tar --null -T - -cf - | tar -xf - -C $<out>/.work
         cd $<out>/.work
         export DOTNET_CLI_HOME="$root/.cook/dotnet/home" NUGET_PACKAGES="$root/.cook/dotnet/packages" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_NOLOGO=1
         ./build.sh --backend -f net8.0 -r linux-x64
@@ -70,14 +70,14 @@ recipe release-linux-x64-backend
     } nondet
 
 recipe release-linux-x64: "release-linux-x64-backend" "pnpm:build" "verify"
-    seal release:sources
+    seal "build.sh" "LICENSE" "src/Directory.Build.props" "distribution/osx/Radarr.app/Contents/Info.plist"
     cook.dep_output_list("release-linux-x64-backend")
     cook.dep_output_list("pnpm:build")
     cook "build/release/Radarr.linux-core-x64.tar.gz" {
         root=$PWD
         work=$(mktemp -d "$root/build/release-package.XXXXXX")
         trap 'rm -rf "$work"' EXIT
-        git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -xf - -C "$work"
+        git ls-files -z --cached --others --exclude-standard -- build.sh LICENSE src/Directory.Build.props distribution/osx/Radarr.app/Contents/Info.plist | tar --null -T - -cf - | tar -xf - -C "$work"
         cd "$work"
         cp -a "$root/$<release-linux-x64-backend>/_output" .
         cp -a "$root/_output/UI" _output/UI
