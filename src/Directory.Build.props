@@ -42,20 +42,20 @@
   <PropertyGroup>
     <Configuration Condition="'$(Configuration)'==''">Release</Configuration>
     <!-- Centralize intermediate and default outputs -->
-    <BaseIntermediateOutputPath>$(RadarrRootDir)_temp\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
-    <IntermediateOutputPath>$(RadarrRootDir)_temp\obj\$(MSBuildProjectName)\$(Configuration)\</IntermediateOutputPath>
-    <OutputPath>$(RadarrRootDir)_temp\bin\$(Configuration)\$(MSBuildProjectName)\</OutputPath>
+    <BaseIntermediateOutputPath Condition="'$(ArtifactsPath)'==''">$(RadarrRootDir)_temp\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath Condition="'$(ArtifactsPath)'==''">$(RadarrRootDir)_temp\obj\$(MSBuildProjectName)\$(Configuration)\</IntermediateOutputPath>
+    <OutputPath Condition="'$(ArtifactsPath)'==''">$(RadarrRootDir)_temp\bin\$(Configuration)\$(MSBuildProjectName)\</OutputPath>
 
     <!-- Output to _output and _tests respectively -->
-    <OutputPath Condition="'$(RadarrProject)'=='true'">$(RadarrRootDir)_output\</OutputPath>
-    <OutputPath Condition="'$(RadarrOutputType)'=='Test'">$(RadarrRootDir)_tests\</OutputPath>
-    <OutputPath Condition="'$(RadarrOutputType)'=='Update'">$(RadarrRootDir)_output\Radarr.Update\</OutputPath>
+    <OutputPath Condition="'$(ArtifactsPath)'=='' and '$(RadarrProject)'=='true'">$(RadarrRootDir)_output\</OutputPath>
+    <OutputPath Condition="'$(ArtifactsPath)'=='' and '$(RadarrOutputType)'=='Test'">$(RadarrRootDir)_tests\</OutputPath>
+    <OutputPath Condition="'$(ArtifactsPath)'=='' and '$(RadarrOutputType)'=='Update'">$(RadarrRootDir)_output\Radarr.Update\</OutputPath>
 
     <!-- Paths relative to project file for better readability -->
     <EnableBaseIntermediateOutputPathMismatchWarning>false</EnableBaseIntermediateOutputPathMismatchWarning>
-    <BaseIntermediateOutputPath>$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))</BaseIntermediateOutputPath>
-    <IntermediateOutputPath>$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)'))</IntermediateOutputPath>
-    <OutputPath>$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(OutputPath)'))</OutputPath>
+    <BaseIntermediateOutputPath Condition="'$(ArtifactsPath)'==''">$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)'))</BaseIntermediateOutputPath>
+    <IntermediateOutputPath Condition="'$(ArtifactsPath)'==''">$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)'))</IntermediateOutputPath>
+    <OutputPath Condition="'$(ArtifactsPath)'==''">$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(OutputPath)'))</OutputPath>
 
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
@@ -142,7 +142,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <AdditionalFiles Include="$(SolutionDir)stylecop.json" />
+    <AdditionalFiles Include="$(RadarrRootDir)src\stylecop.json" />
   </ItemGroup>
 
   <!--
