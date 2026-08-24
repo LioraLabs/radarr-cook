@@ -78,18 +78,21 @@ recipe verify: "pnpm:build"
 
 recipe release-linux-x64-backend
     seal release:sources release:toolchain release:environment
-    cook "build/release-backend/linux-x64/net8.0.tar" {
+    cook "build/release-backend/linux-x64/net8.0/" {
         root=$PWD
-        work=$(mktemp -d "$root/build/release-backend.XXXXXX")
-        trap 'rm -rf "$work"' EXIT
-        git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -xf - -C "$work"
-        cd "$work"
+        rm -rf $<out>
+        mkdir -p $<out>/.work
+        git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -xf - -C $<out>/.work
+        cd $<out>/.work
         export DOTNET_CLI_HOME="$root/.cook/dotnet/home" NUGET_PACKAGES="$root/.cook/dotnet/packages" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_NOLOGO=1
         ./build.sh --backend -f net8.0 -r linux-x64
-        tar -cf "$root/$<out>" _output
+        mv _output "$root/$<out>/"
+        cd "$root"
+        rm -rf $<out>/.work
     } nondet
 
 recipe release-linux-x64: "release-linux-x64-backend" "pnpm:build" "verify"
+    cook.dep_output_list("release-linux-x64-backend")
     cook.dep_output_list("pnpm:build")
     cook "build/release/Radarr.linux-core-x64.tar.gz" {
         root=$PWD
@@ -97,7 +100,7 @@ recipe release-linux-x64: "release-linux-x64-backend" "pnpm:build" "verify"
         trap 'rm -rf "$work"' EXIT
         git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -xf - -C "$work"
         cd "$work"
-        tar -xf "$root/$<release-linux-x64-backend>"
+        cp -a "$root/$<release-linux-x64-backend>/_output" .
         cp -a "$root/_output/UI" _output/UI
         ./build.sh --packages -f net8.0 -r linux-x64
         tar -czf "$root/$<out>" -C _artifacts/linux-x64/net8.0 Radarr
