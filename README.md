@@ -13,41 +13,62 @@ Note that only one type of a given movie is supported. If you want both a 4k ver
 
 ## Cook build showcase
 
-This fork can build a runnable Radarr tree with [Cook](https://github.com/LioraLabs/cook). Use a Cook build containing `cook.materialize` and the COOK-558 qualified-recipe resolution fix; the tested main build is `b055a6e9`, which reports Cook 0.16.1 / Standard v0.18. Also use Node 20 or newer, the .NET SDK 8.0.421 pinned by [`global.json`](global.json), and pnpm 10.33.0 (installed by the pnpm module).
-
-From a clean checkout:
+Cook produces a real Radarr Linux release archive with one command:
 
 ```sh
+cook release-linux-x64
+# build/release/Radarr.linux-core-x64.tar.gz
+```
+
+This is not a parallel reimplementation of Radarr's release process. Cook calls the existing `build.sh --backend` production build, gates packaging on the existing frontend lint and style checks, then calls `build.sh --packages` and archives its output. Cook adds the dependency graph, content-addressed caching, and an explanation for every hit or rebuild.
+
+### Build from a clean clone
+
+Prerequisites are Git, `curl`, `tar`, Perl, Node 20 or newer, and the .NET SDK 8.0.421 pinned by [`global.json`](global.json). On Linux or macOS, install Cook and the published modules, then build:
+
+```sh
+curl -fsSL https://getcook.sh | sh
+git clone --branch develop https://github.com/LioraLabs/radarr-cook.git
+cd radarr-cook
 cook modules install
-cook build
-cook build                 # warm run: all unchanged work is cached
-cook why build             # read-only explanation of hits and rebuilds
+cook release-linux-x64
 ```
 
-The graph builds every .NET project through `dotnet:build`, builds the UI with `pnpm:build`, then assembles those aggregate outputs into `build/radarr`. Run it with isolated application data:
+`cook modules install` realizes the exact published module versions in [`cook.lock`](cook.lock), including pnpm 10.33.0. Extract and run the result with isolated application data:
 
 ```sh
+release_dir=$(mktemp -d)
+tar -xzf build/release/Radarr.linux-core-x64.tar.gz -C "$release_dir"
 radarr_data=$(mktemp -d)
-build/radarr/bin/Radarr -nobrowser -data="$radarr_data"
-# Stop Radarr, then remove "$radarr_data" when finished.
+"$release_dir/Radarr/Radarr" -nobrowser -data="$radarr_data"
+# Stop Radarr, then: rm -rf "$release_dir" "$radarr_data"
 ```
 
-Cache keys follow declared inputs. A frontend edit invalidates `pnpm:build` and the final runnable tree, not the .NET closure; a core C# edit invalidates its affected .NET work and the final tree, not `pnpm:build`. To inspect either case without retaining the test edit:
+Only `linux-x64` has been executed and verified. This showcase makes no claim yet for Radarr's Windows, macOS, or FreeBSD release targets.
+
+### What changes rebuild
+
+Verified on the final graph:
+
+- The production backend took about 28–49 seconds, depending on the run; packaging and archiving took about 10 seconds.
+- An unchanged full release took about 7.2 seconds wall-clock, with Cook reporting about 0.71 seconds of graph execution. `cook menu` took about 1.55 seconds.
+- A C# edit reran the production backend and archive while `pnpm:build` and `verify` remained cached.
+- A frontend edit left the production backend cached and reran `pnpm:build`, `verify`, and the archive.
+- A lint failure prevented the archive step from running.
+
+Use `cook why release-linux-x64` for the inputs, seals, and cache status behind the result. Source snapshots, the `dotnet` toolchain, the release environment, and the locked module versions are all determinants; changing them invalidates the affected work instead of silently reusing it.
+
+The remaining warm-path overhead is executor validation even when the production backend result is reusable. That is tracked as COOK-561; it does not change the artifact or invalidation behavior above.
+
+### Debug developer build
+
+`cook build` is a separate, faster developer path. It builds the .NET workspace in Debug, builds the UI, and assembles a runnable tree under `build/radarr`:
 
 ```sh
-(
-  file=frontend/src/Diag/ConsoleApi.js # or src/NzbDrone.Core/Languages/Language.cs
-  backup=$(mktemp)
-  cp "$file" "$backup"
-  trap 'cp "$backup" "$file"; rm -f "$backup"' EXIT
-  printf '\n' >> "$file"
-  cook why build
-)
+cook build
 ```
 
-The committed [`cook.lock`](cook.lock) supplies the exact tested module closure. `cook_dotnet` 0.3 exposes the generated projects' existing build outputs through `dotnet:build`, so the [`Cookfile`](Cookfile) consumes the workspace aggregate directly. The modules are used as published, with no inline extension.
-
-Fork-local Radarr adaptations are limited to plain pnpm type dependencies, `ArtifactsPath` precedence, rooted StyleCop paths, and Windows targeting support.
+The [`Cookfile`](Cookfile) uses the published modules directly, with no inline project graph or private module extension.
 
 ## Major Features Include
 
