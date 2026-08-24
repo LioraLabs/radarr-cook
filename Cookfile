@@ -70,6 +70,7 @@ recipe release-linux-x64-backend
     } nondet
 
 recipe release-linux-x64: "release-linux-x64-backend" "pnpm:build" "verify"
+    seal release:sources
     cook.dep_output_list("release-linux-x64-backend")
     cook.dep_output_list("pnpm:build")
     cook "build/release/Radarr.linux-core-x64.tar.gz" {
