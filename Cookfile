@@ -45,11 +45,14 @@ recipe build: "dotnet:build" "pnpm:build"
         end
     }
 
-recipe release-linux-x64: "pnpm:build"
+recipe verify: "pnpm:build"
+    seal "frontend/**" "package.json" "pnpm-lock.yaml"
+    test { pnpm lint && pnpm stylelint-linux }
+
+recipe release-linux-x64-backend
     seal "src/**" "build.sh" "global.json" "LICENSE"
     seal release:toolchain release:environment
-    cook.dep_output_list("pnpm:build")
-    cook "build/release/linux-x64/net8.0/Radarr/" {
+    cook "build/release-backend/linux-x64/net8.0/" {
         root=$PWD
         rm -rf $<out>
         mkdir -p $<out>/.work
@@ -57,6 +60,21 @@ recipe release-linux-x64: "pnpm:build"
         cd $<out>/.work
         export DOTNET_CLI_HOME="$root/.cook/dotnet/home" NUGET_PACKAGES="$root/.cook/dotnet/packages" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_NOLOGO=1
         ./build.sh --backend -f net8.0 -r linux-x64
+        mv _output "$root/$<out>/"
+        cd "$root"
+        rm -rf $<out>/.work
+    } nondet
+
+recipe release-linux-x64: "release-linux-x64-backend" "pnpm:build" "verify"
+    cook.dep_output_list("release-linux-x64-backend")
+    cook.dep_output_list("pnpm:build")
+    cook "build/release/linux-x64/net8.0/Radarr/" {
+        root=$PWD
+        rm -rf $<out>
+        mkdir -p $<out>/.work
+        git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -xf - -C $<out>/.work
+        cd $<out>/.work
+        cp -a "$root/$<release-linux-x64-backend>/_output" .
         cp -a "$root/_output/UI" _output/UI
         ./build.sh --packages -f net8.0 -r linux-x64
         cp -a _artifacts/linux-x64/net8.0/Radarr/. "$root/$<out>/"
